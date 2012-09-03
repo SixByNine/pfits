@@ -269,31 +269,13 @@ for(i =0 ; i < data->phead.nsub; i++){
 
 
   // work out approx S/N
-  int window=0.5*data->phead.nbin;
-  float sum=0;
-  float minsum=0;
-  for (i=0;i<window;i++){
-	  sum+=fy[i];
-  }
-  minsum=sum;
-  float totalsum=0;
-  int offbin=0;
-  for (i=0;i<data->phead.nbin;i++){
-	if (sum < minsum){
-		offbin=i;
-		minsum=sum;
-	}
-	sum-=fy[i];
-	sum+=fy[(window+i)%data->phead.nbin];
-  }
-  float mean=minsum/(float)window;
-  sum=0;
-  for (i=0;i<window;i++){
-	  float v = fy[(i+offbin)%data->phead.nbin]-mean;
-	  sum+=v*v;
-  }
-  float rms=sqrt(sum/(float)window);
+  
+  float mean;
+  float rms;
+  getbaseline(fy,data->phead.nbin,0.35,&mean,&rms);
 
+  int window;
+  float sum;
   int bestwindow=1;
   int bestp0=0;
   float best=0;
@@ -329,7 +311,7 @@ for(i =0 ; i < data->phead.nsub; i++){
   }
 
   printf("bw: %d %d\n",bestwindow,bestp0);
-  printf("S/N: %.1f Nbin: %d\n",best/rms,data->phead.nbin);
+  printf("S/N: %.1f Nsub: %d\n",best/rms,data->phead.nsub);
 
   for (i=0;i<data->phead.nbin;i++){
 	  fy_R[i]/=rms;

@@ -302,7 +302,7 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
 //  float bpass[data->phead.nchan*2];
   float bpass_offs[2];
   float bpass_scl[2];
-  double meanVal;
+  float meanVal,rmsVal;
 
   //  int calcBaseline=1;
   // Should use DAT_OFFS and DAT_SCL for scaling
@@ -437,8 +437,10 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
 		    {
 		      ty[k] -= sqrt(bpass[data->phead.nchan+i]*bpass[i]);
 		      } */
-		  meanVal+=ty[k];
+		  //meanVal+=ty[k];
 		}
+
+	      getbaseline(ty,data->phead.nbin,0.35,&meanVal,&rmsVal);
 	      //	      printf("Val = %g\n",ty[10]);
 	      for (k=0;k<data->phead.nbin;k++)
 		{
@@ -446,7 +448,7 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
 		  //		    printf("Orig value = %g\n",ty[k]);
 
 		  //		  ty[k] = ((ty[k]+offs[l][j*data->phead.nchan+i])*dat_scl[l][j*data->phead.nchan+i]); //+offs[l][j*data->phead.nchan+i]);
-		  ty[k] -= meanVal/(double)(data->phead.nbin);
+		  ty[k] -= meanVal;
 		  // Subtract bandpass
 		  /*		  if (j==0)
 		    ty[k] -= bpass[i];
@@ -1591,4 +1593,36 @@ void setMask(int maskN,int maskP,unsigned char **mask)
 unsigned int extractBit(unsigned char byte,unsigned int pos)
 {
   return (byte >> pos) & 0x01;
+}
+
+void getbaseline(float* prof, int nbin, float fwindow,float* mean, float *rms){
+	int i;
+	int window=fwindow*nbin;
+	float sum=0;
+	float minsum=0;
+	for (i=0;i<window;i++){
+		sum+=prof[i];
+	}
+	minsum=sum;
+	float totalsum=0;
+	int offbin=0;
+	for (i=0;i<nbin;i++){
+		if (sum < minsum){
+			offbin=i;
+			minsum=sum;
+		}
+		sum-=prof[i];
+		sum+=prof[(window+i)%nbin];
+	}
+	(*mean)=minsum/(float)window;
+	sum=0;
+	for (i=0;i<window;i++){
+		float v = prof[(i+offbin)%nbin]-(*mean);
+		sum+=v*v;
+	}
+	(*rms)=sqrt(sum/(float)window);
+
+
+	return;
+
 }

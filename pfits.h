@@ -65,3 +65,4 @@ int writeData(fitsfile *fp,FILE *fout,dSet *data,long s1,long s2,float dm);
 int createWavFile(fitsfile *fp,FILE *fout,dSet *data,long s1,long s2,float dm);
 
 
+void getbaseline(float* prof, int nbin, float fwindow,float* mean, float *rms);
