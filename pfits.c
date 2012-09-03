@@ -304,11 +304,8 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
   float bpass_scl[2];
   float meanVal,rmsVal;
 
-  //  int calcBaseline=1;
-  // Should use DAT_OFFS and DAT_SCL for scaling
-  //
-  // Must also subtract the bandpass!!!
-  //
+
+  // get mean/RMS of off-pulse for scaling. no longer need OFFS/DAT_SCL
   printf("sub0 = %d\n",sub0);
   if (dm < 0)
     dm = data->phead.dm;
@@ -352,37 +349,38 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
     printf("Unable to move to subint table in FITS file\n");
     exit(1);
   }
+  // REMOVED: No longer need dat_scl or offs. OFFS/DAT_SCL
+//  offs = (float **)malloc(sizeof(float *)*data->phead.nsub);
+//  dat_scl = (float **)malloc(sizeof(float *)*data->phead.nsub);
+//  for (i=0;i<data->phead.nsub;i++)
+//    {
+//      offs[i] = (float *)malloc(sizeof(float)*data->phead.nchan*data->phead.npol);
+//      dat_scl[i] = (float *)malloc(sizeof(float)*data->phead.nchan*data->phead.npol);
+//    }
+//  fits_get_colnum(fp,CASEINSEN,"DAT_OFFS",&colnum,&status);
+//  if (status) {
+//    printf("Unable to find DAT_OFFS in the subint table in FITS file\n");
+//    exit(1);
+//  }
+//  for (i=0;i<data->phead.nsub;i++)
+//    {
+//      fits_read_col_flt(fp,colnum,i+1,1,data->phead.nchan*data->phead.npol,nval,offs[i],&initflag,&status);
+//      //      printf("offs = %g\n",offs[i][5]);
+//      //      offs[i] =0;
+//    }
+//
+//  fits_get_colnum(fp,CASEINSEN,"DAT_SCL",&colnum,&status);
+//  if (status) {
+//    printf("Unable to find DAT_SCL in the subint table in FITS file\n");
+//    exit(1);
+//  }
+//  for (i=0;i<data->phead.nsub;i++)
+//    {
+//      fits_read_col_flt(fp,colnum,i+1,1,data->phead.nchan*data->phead.npol,nval,dat_scl[i],&initflag,&status);
+//      //      printf("dat_scl = %g\n",dat_scl[i][5]);
+//      //            dat_scl[i]=1.0;
+//    }
 
-  offs = (float **)malloc(sizeof(float *)*data->phead.nsub);
-  dat_scl = (float **)malloc(sizeof(float *)*data->phead.nsub);
-  for (i=0;i<data->phead.nsub;i++)
-    {
-      offs[i] = (float *)malloc(sizeof(float)*data->phead.nchan*data->phead.npol);
-      dat_scl[i] = (float *)malloc(sizeof(float)*data->phead.nchan*data->phead.npol);
-    }
-  fits_get_colnum(fp,CASEINSEN,"DAT_OFFS",&colnum,&status);
-  if (status) {
-    printf("Unable to find DAT_OFFS in the subint table in FITS file\n");
-    exit(1);
-  }
-  for (i=0;i<data->phead.nsub;i++)
-    {
-      fits_read_col_flt(fp,colnum,i+1,1,data->phead.nchan*data->phead.npol,nval,offs[i],&initflag,&status);
-      //      printf("offs = %g\n",offs[i][5]);
-      //      offs[i] =0;
-    }
-
-  fits_get_colnum(fp,CASEINSEN,"DAT_SCL",&colnum,&status);
-  if (status) {
-    printf("Unable to find DAT_SCL in the subint table in FITS file\n");
-    exit(1);
-  }
-  for (i=0;i<data->phead.nsub;i++)
-    {
-      fits_read_col_flt(fp,colnum,i+1,1,data->phead.nchan*data->phead.npol,nval,dat_scl[i],&initflag,&status);
-      //      printf("dat_scl = %g\n",dat_scl[i][5]);
-      //            dat_scl[i]=1.0;
-    }
   fits_get_colnum(fp,CASEINSEN,"DATA",&colnum,&status);
   if (status) {
     printf("Unable to find data in the subint table in FITS file\n");
@@ -409,9 +407,7 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
     } 
   for (l=sub0;l<data->phead.nsub;l++)
     {
-      for (j=0;j<data->phead.npol;j++)
-      //      for (j=0;j<4;j++)
-      //j=3;
+      for (j=0;j<data->phead.npol && j < 2;j++) // Do not add cross terms!
 	{
 	  for (i=0;i<data->phead.nchan;i++)
 	    {
@@ -426,9 +422,10 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
 	      //		printf("Have %g %g %g %d %d\n",dm,f0,f0+chanbw*i,i,cdelay);
 	      fits_read_col_flt(fp,colnum,l+1,j*(data->phead.nchan*data->phead.nbin)+i*data->phead.nbin+1,data->phead.nbin,nval,ty,&initflag,&status);
 	      meanVal=0;
-	      for (k=0;k<data->phead.nbin;k++)
-		{
-		  ty[k] = ((ty[k]+offs[l][j*data->phead.nchan+i])*dat_scl[l][j*data->phead.nchan+i]); //+offs[l][j*data->phead.nchan+i]);
+	      //for (k=0;k<data->phead.nbin;k++)
+		//{
+		 // ty[k] = ((ty[k]+offs[l][j*data->phead.nchan+i])*dat_scl[l][j*data->phead.nchan+i]); //+offs[l][j*data->phead.nchan+i]);
+
 		  /*		  if (j==0)
 		    ty[k] -= bpass[i];
 		  else if (j==1)
@@ -438,17 +435,19 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
 		      ty[k] -= sqrt(bpass[data->phead.nchan+i]*bpass[i]);
 		      } */
 		  //meanVal+=ty[k];
-		}
+	//	}
 
 	      getbaseline(ty,data->phead.nbin,0.35,&meanVal,&rmsVal);
+	      if (rmsVal == 0.0 ) rmsVal=1.0;
 	      //	      printf("Val = %g\n",ty[10]);
 	      for (k=0;k<data->phead.nbin;k++)
 		{
 		  //		  if (i==10 && l==10)
 		  //		    printf("Orig value = %g\n",ty[k]);
 
-		  //		  ty[k] = ((ty[k]+offs[l][j*data->phead.nchan+i])*dat_scl[l][j*data->phead.nchan+i]); //+offs[l][j*data->phead.nchan+i]);
+		  //ty[k] = ((ty[k]+offs[l][j*data->phead.nchan+i])*dat_scl[l][j*data->phead.nchan+i]); //+offs[l][j*data->phead.nchan+i]);
 		  ty[k] -= meanVal;
+		  ty[k] /= rmsVal;
 		  // Subtract bandpass
 		  /*		  if (j==0)
 		    ty[k] -= bpass[i];
@@ -475,19 +474,15 @@ int extractFoldData(fitsfile *fp,dSet *data,float dm,float *fx,float *fy,float *
 	    }
 	}
     }
-  /*  for (i=0;i<data->phead.nsub;i++)
-    {
-      for (j=0;j<data->phead.nbin;j++)
-	printf("%g ",time_y[i*data->phead.nbin+j]);
-      printf("\n");
-      }*/
-  for (i=0;i<data->phead.nsub;i++)
-    {
-      free(offs[i]);
-      free(dat_scl[i]);
-    }
-  free(offs);
-  free(dat_scl);
+   
+  // REMOVED: OFFS/DAT_SCL table no longer needed.
+  //for (i=0;i<data->phead.nsub;i++)
+  //  {
+  //    free(offs[i]);
+  //    free(dat_scl[i]);
+  //  }
+  //free(offs);
+  //free(dat_scl);*/
   printf("Status = %d\n",status);
 }
 
